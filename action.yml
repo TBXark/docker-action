@@ -121,6 +121,7 @@ runs:
         tags: ${{ steps.meta_backup.outputs.tags }}
         labels: ${{ steps.meta_backup.outputs.labels }}
         provenance: false
-        cache-from: type=gha
+        cache-from: |
+          type=gha
+          type=registry,ref=${{ inputs.docker_registry }}/${{ env.REPO }}:latest
         cache-to: type=gha,mode=max
-        inputs: ${{ steps.docker_build.outputs.digest }}
