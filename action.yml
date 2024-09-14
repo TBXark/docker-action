@@ -71,6 +71,8 @@ runs:
       uses: docker/metadata-action@v5
       with:
         images: ${{ inputs.docker_registry }}/${{ env.REPO }}
+        tags: |
+          type=raw,value=latest
 
     - name: Docker meta for backup registry
       if: env.USE_BACKUP == 'true'
@@ -78,6 +80,8 @@ runs:
       uses: docker/metadata-action@v5
       with:
         images: ${{ inputs.backup_registry }}/${{ env.BACKUP_REPO }}
+        tags: |
+          type=raw,value=latest
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
@@ -96,13 +100,16 @@ runs:
 
     - name: Build and push
       uses: docker/build-push-action@v5
+      id: docker_build
       with:
         context: .
         push: true
         platforms: linux/amd64,linux/arm64
-        tags: latest
+        tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         provenance: false
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Push to backup registry
       if: env.USE_BACKUP == 'true'
@@ -114,3 +121,6 @@ runs:
         tags: ${{ steps.meta_backup.outputs.tags }}
         labels: ${{ steps.meta_backup.outputs.labels }}
         provenance: false
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        inputs: ${{ steps.docker_build.outputs.digest }}
