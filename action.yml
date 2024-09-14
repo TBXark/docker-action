@@ -63,6 +63,7 @@ runs:
         push: true
         platforms: linux/amd64,linux/arm64
         tags: ${{ inputs.docker_registry }}/${{ env.REPO }}:latest
+        provenance: false
 
     - name: Send docker push webhook
       if: ${{ inputs.docker_push_webhook != '' }}
