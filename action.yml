@@ -33,66 +33,67 @@ inputs:
     required: false
     description: The webhook to push the image to the backup registry
 
-jobs:
-  build-and-push:
-    permissions:
-        packages: write
-        contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ inputs.docker_registry }}
-          username: ${{ inputs.docker_username }}
-          password: ${{ inputs.docker_password }}
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ inputs.docker_registry }}
+        username: ${{ inputs.docker_username }}
+        password: ${{ inputs.docker_password }}
 
-      - name: Lowercase the repo name
-        run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
+    - name: Lowercase the repo name
+      shell: bash
+      run: echo "REPO=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
-      - name: Build and push
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ env.REPO }}:latest
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        platforms: linux/amd64,linux/arm64
+        tags: ${{ inputs.docker_registry }}/${{ env.REPO }}:latest
 
-      - name: Send docker push webhook
-        if: ${{ inputs.docker_push_webhook }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"status": "success", "message": "Docker push completed", "image": "ghcr.io/${{ env.REPO }}:latest"}' \
-          ${{ inputs.docker_push_webhook }}
+    - name: Send docker push webhook
+      if: ${{ inputs.docker_push_webhook != '' }}
+      shell: bash
+      run: |
+        curl -X POST -H "Content-Type: application/json" \
+        -d '{"status": "success", "message": "Docker push completed", "image": "${{ inputs.docker_registry }}/${{ env.REPO }}:latest"}' \
+        ${{ inputs.docker_push_webhook }}
 
-      - name: Login to backup registry
-        uses: docker/login-action@v2
-        if: ${{ inputs.backup_registry && inputs.backup_username && inputs.backup_password }}
-        with:
-          registry: ${{ inputs.backup_registry }}
-          username: ${{ inputs.backup_username }}
-          password: ${{ inputs.backup_password }}
+    - name: Login to backup registry
+      uses: docker/login-action@v2
+      if: ${{ inputs.backup_registry != '' && inputs.backup_username != '' && inputs.backup_password != '' }}
+      with:
+        registry: ${{ inputs.backup_registry }}
+        username: ${{ inputs.backup_username }}
+        password: ${{ inputs.backup_password }}
 
-      - name: Tag image for backup registry
-        if: ${{ inputs.backup_registry && inputs.backup_username && inputs.backup_password }}
-        run: docker tag ghcr.io/${{ env.REPO }}:latest ${{ inputs.backup_registry }}/${{ env.REPO }}:latest
+    - name: Tag image for backup registry
+      if: ${{ inputs.backup_registry != '' && inputs.backup_username != '' && inputs.backup_password != '' }}
+      shell: bash
+      run: docker tag ${{ inputs.docker_registry }}/${{ env.REPO }}:latest ${{ inputs.backup_registry }}/${{ env.REPO }}:latest
 
-      - name: Push to backup registry
-        if: ${{ inputs.backup_registry && inputs.backup_username && inputs.backup_password }}
-        run: docker push ${{ inputs.backup_registry }}/${{ env.REPO }}:latest
+    - name: Push to backup registry
+      if: ${{ inputs.backup_registry != '' && inputs.backup_username != '' && inputs.backup_password != '' }}
+      shell: bash
+      run: docker push ${{ inputs.backup_registry }}/${{ env.REPO }}:latest
 
-      - name: Send docker push webhook
-        if: ${{ inputs.backup_push_webhook }}
-        run: |
-          curl -X POST -H "Content-Type: application/json" \
-          -d '{"status": "success", "message": "Docker push completed", "image": "${{ inputs.backup_registry }}/${{ env.REPO }}:latest"}' \
-          ${{ inputs.backup_push_webhook }}
+    - name: Send docker push webhook for backup
+      if: ${{ inputs.backup_push_webhook != '' }}
+      shell: bash
+      run: |
+        curl -X POST -H "Content-Type: application/json" \
+        -d '{"status": "success", "message": "Docker push completed", "image": "${{ inputs.backup_registry }}/${{ env.REPO }}:latest"}' \
+        ${{ inputs.backup_push_webhook }}
