@@ -4,6 +4,7 @@ inputs:
   version:
     type: string
     required: false
+    default: 'latest'
     description: The version to tag the Docker image with
   docker_registry:
     type: string
@@ -86,8 +87,7 @@ runs:
       with:
         images: ${{ inputs.backup_registry }}/${{ env.BACKUP_REPO }}
         tags: |
-          type=raw,value=latest
-          type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
+          type=raw,value=${{ inputs.version }}
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
