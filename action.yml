@@ -1,46 +1,50 @@
 name: Build and Publish Docker Image
+description: Build and publish a Docker image to a Docker registry with optional backup registry support
 
 inputs:
   version:
-    type: string
     required: false
     default: 'latest'
     description: The version to tag the Docker image with
   docker_registry:
-    type: string
     required: true
     description: The Docker registry to push the image to
   docker_username:
-    type: string
     required: true
     description: The username for the Docker registry
   docker_password:
-    type: string
     required: true
     description: The password for the Docker registry
   backup_registry:
-    type: string
     required: false
     description: The backup Docker registry to push the image to
   backup_username:
-    type: string
     required: false
     description: The username for the backup Docker registry
   backup_password:
-    type: string
     required: false
     description: The password for the backup Docker registry
   backup_remove_username:
-    type: boolean
     required: false
-    default: true
+    default: 'true'
     description: Whether to remove the username when pushing to the backup registry
+  checkout_submodules:
+    required: false
+    default: recursive
+    description: Submodule checkout mode passed to actions/checkout
+  checkout_fetch_depth:
+    required: false
+    default: '0'
+    description: Fetch depth passed to actions/checkout
 
 runs:
   using: "composite"
   steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: ${{ inputs.checkout_submodules }}
+        fetch-depth: ${{ inputs.checkout_fetch_depth }}
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
